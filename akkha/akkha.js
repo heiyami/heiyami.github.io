@@ -219,12 +219,10 @@ let TICK_COUNT = -1;
 let PATTERN = [];
 let SEQUENCE = [];
 let CURR_NUM_GLYPHS_PASSED = 0;
-let CURR_NUM_GLYPHS_FAILED = 0;
 let CURR_NUM_ORBS_TANKED = 0;
 let CURR_NUM_ORBS_SPAWNED = 0;
 let TOTAL_NUM_ACTIVE_GLYPHS = 0;
 let TOTAL_NUM_GLYPHS_PASSED = 0;
-let TOTAL_NUM_GLYPHS_FAILED = 0;
 let TOTAL_NUM_ORBS_TANKED = 0;
 let TOTAL_NUM_ORBS_SPAWNED = 0;
 let PLAYER = new Point(10, 10);
@@ -287,13 +285,9 @@ function printStats() {
     if (gp) {
         gp.innerHTML = `Glyphs passed: ${CURR_NUM_GLYPHS_PASSED}/${NUM_ACTIVE_GLYPHS} current, ${TOTAL_NUM_GLYPHS_PASSED}/${TOTAL_NUM_ACTIVE_GLYPHS} total`;
     }
-    let gf = document.getElementById("numGlyphFailed");
-    if (gf) {
-        gf.innerHTML = `Glyphs failed: ${CURR_NUM_GLYPHS_FAILED}/${NUM_ACTIVE_GLYPHS} current, ${TOTAL_NUM_GLYPHS_FAILED}/${TOTAL_NUM_ACTIVE_GLYPHS} total`;
-    }
     let ot = document.getElementById("numOrbsTanked");
     if (ot) {
-        ot.innerHTML = `Magical orbs tanked: ${CURR_NUM_ORBS_TANKED}/${CURR_NUM_ORBS_SPAWNED} current, ${TOTAL_NUM_ORBS_TANKED}/${TOTAL_NUM_ORBS_SPAWNED} total`;
+        ot.innerHTML = `Magical orbs avoided: ${CURR_NUM_ORBS_SPAWNED - CURR_NUM_ORBS_TANKED}/${CURR_NUM_ORBS_SPAWNED} current, ${TOTAL_NUM_ORBS_SPAWNED - TOTAL_NUM_ORBS_TANKED}/${TOTAL_NUM_ORBS_SPAWNED} total`;
     }
 }
 /**
@@ -305,6 +299,18 @@ function showInstructions() {
         "Your performance is tracked in the statistics below.");
 }
 /**
+ * Create an alert describing the app.
+ */
+function showAbout() {
+    alert("Akkha Memory Blast Trainer, v0.2\n\n" +
+        "Changelog:\n" +
+        "- Fix pattern generation so consecutive quadrants must be adjacent\n" +
+        "- Fix issue with magical orb detection\n" +
+        "- Fix issue where game state would occasionally glitch\n" +
+        "- Update buttons behaviour to be more intuitive\n\n" +
+        "Thanks to Razie and qez for feedback and suggestions.");
+}
+/**
  * Create an alert describing what each setting does.
  */
 function showSettings() {
@@ -313,7 +319,8 @@ function showSettings() {
         "Feeling Special: When enabled, increases the speed of the memory blast. " +
         "If Double Trouble is also enabled, an additional magical orb will spawn one tile ahead of your character.\n\n" +
         "Active Glyphs: Choose how many glyphs will activate in the sequence (4-6). " +
-        "In game, this scales based on Akkha's path level. At level 2, it is set to 5. At level 4, it is set to 6.");
+        "In game, this scales based on Akkha's path level. At level 2, it is set to 5. At level 4, it is set to 6.\n\n" +
+        "Note: If you change any of these settings, you must click New Pattern for them to take effect.");
 }
 /**
  * Create an alert describing what the game buttons do.
@@ -321,7 +328,7 @@ function showSettings() {
 function showHelp() {
     alert("Start: Starts the memory blast.\n\n" +
         "Restart: Restarts the same memory blast from the beginning.\n\n" +
-        "New Pattern: Starts the memory blast with a new pattern.");
+        "New Pattern: Starts the memory blast with a new pattern.\n\n");
 }
 /// ------------------------------------------------------------------------------------------------
 /// Render Helpers
@@ -617,12 +624,10 @@ function resetVars() {
     ICE_QUADRANT.isActive = false;
     LIGHTNING_QUADRANT.isActive = false;
     CURR_NUM_GLYPHS_PASSED = 0;
-    CURR_NUM_GLYPHS_FAILED = 0;
     CURR_NUM_ORBS_TANKED = 0;
     CURR_NUM_ORBS_SPAWNED = 0;
     TOTAL_NUM_ACTIVE_GLYPHS = 0;
     TOTAL_NUM_GLYPHS_PASSED = 0;
-    TOTAL_NUM_GLYPHS_FAILED = 0;
     TOTAL_NUM_ORBS_SPAWNED = 0;
     TOTAL_NUM_ORBS_TANKED = 0;
     PLAYER.x = 10;
@@ -659,11 +664,7 @@ function tick() {
         }
         deleteMagicalOrbs();
     }
-    if (isDamagedByMemoryBlast()) {
-        CURR_NUM_GLYPHS_FAILED += 1;
-        TOTAL_NUM_GLYPHS_FAILED += 1;
-    }
-    else if (isPassedMemoryBlast()) {
+    if (isPassedMemoryBlast()) {
         CURR_NUM_GLYPHS_PASSED += 1;
         TOTAL_NUM_GLYPHS_PASSED += 1;
     }
