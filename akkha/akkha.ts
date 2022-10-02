@@ -218,13 +218,6 @@ const GLYPH_EVENTS = [
     EventType.LightningGlyphActive
 ];
 
-const MEMORY_BLAST_EVENTS = new Set([
-    EventType.FireQuadrantStage1,
-    EventType.ShadowQuadrantStage1,
-    EventType.IceQuadrantStage1,
-    EventType.LightningQuadrantStage1
-]);
-
 const PLAYER_TILE_STROKE = "#00efef";
 const GRID_TILE_STROKE   = "#eeeeee";
 const TARGET_TILE_STROKE = "#d35eed";
@@ -951,10 +944,19 @@ function isDamagedByMagicalOrb() {
  * @returns true if the player has passed a glyph's memory blast.
  */
 function isPassedMemoryBlast() {
-    let currEvent = SEQUENCE[TICK_COUNT];
-    let prevEvent = SEQUENCE[TICK_COUNT - 1];
-
-    return (currEvent != prevEvent) && (MEMORY_BLAST_EVENTS.has(currEvent));
+    switch (SEQUENCE[TICK_COUNT]) {
+        case EventType.FireQuadrantStage1:
+            return FIRE_QUADRANT.contains(PLAYER);
+        case EventType.ShadowQuadrantStage1:
+            return SHADOW_QUADRANT.contains(PLAYER);
+        case EventType.IceQuadrantStage1:
+            return ICE_QUADRANT.contains(PLAYER);
+        case EventType.LightningQuadrantStage1:
+            return LIGHTNING_QUADRANT.contains(PLAYER);
+        default:
+            // Should never happen.
+            return false;
+    }
 }
 
 /**
