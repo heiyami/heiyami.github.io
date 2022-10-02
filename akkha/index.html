@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Akkha Memory Blast Trainer</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="utf-8"/>
+</head>
+<body>
+<!-- <body onresize="resize()"> -->
+    <p align="center">
+        <button onclick="showInstructions()">Instructions</button>
+        <button onclick="showSettings()">About Settings</button>
+    </p>
+    <div class="center-wrapper-parent">
+        <div id="options">
+            <div id="form">
+                <label for="dt">Double Trouble</label>
+                <input type="checkbox" id="dt" name="dt">
+            </div>
+            <div id="form">
+                <label for="fs">Feeling Special</label>
+                <input type="checkbox" id="fs" name="fs">
+            </div>
+            <div id="form">
+                <label for="ag">Active Glyphs</label>
+                <input type="number" id="ag" name="ag" min="4" max="6" placeholder="4">
+            </div>
+        </div>
+        <div id="stats">
+            <div id="numGlyphPassed" align="center">Glyphs passed: 0 / 0</div>
+            <div id="numGlyphFailed" align="center">Glyphs failed: 0 / 0</div>
+            <div id="numOrbsTanked" align="center">Shadow orbs tanked: 0 / 0</div>
+        </div>
+        <div class="canvas-wrapper">
+            <canvas id="akkha-arena" tabindex="1"></canvas>
+        </div>
+        <p align="center">
+			<button onclick="start()">Start</button>
+			<button onclick="reset()">Reset</button>
+			<button onclick="generate()">New Pattern</button>
+		</p>
+    </div>
+    <script type="text/javascript" src="akkha.js"></script>
+</body>
+</html>
