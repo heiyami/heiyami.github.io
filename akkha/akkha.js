@@ -165,7 +165,6 @@ const MEMORY_BLAST_EVENTS = new Set([
     EventType.IceQuadrantStage1,
     EventType.LightningQuadrantStage1
 ]);
-const GLYPHS_PER_ROUND = 4;
 const PLAYER_TILE_STROKE = "#00efef";
 const GRID_TILE_STROKE = "#eeeeee";
 const TARGET_TILE_STROKE = "#d35eed";
@@ -223,7 +222,7 @@ let CURR_NUM_GLYPHS_PASSED = 0;
 let CURR_NUM_GLYPHS_FAILED = 0;
 let CURR_NUM_ORBS_TANKED = 0;
 let CURR_NUM_ORBS_SPAWNED = 0;
-let TOTAL_ROUNDS = 0;
+let TOTAL_NUM_ACTIVE_GLYPHS = 0;
 let TOTAL_NUM_GLYPHS_PASSED = 0;
 let TOTAL_NUM_GLYPHS_FAILED = 0;
 let TOTAL_NUM_ORBS_TANKED = 0;
@@ -286,11 +285,11 @@ function getTileClicked(event) {
 function printStats() {
     let gp = document.getElementById("numGlyphPassed");
     if (gp) {
-        gp.innerHTML = `Glyphs passed: ${CURR_NUM_GLYPHS_PASSED}/${GLYPHS_PER_ROUND} current, ${TOTAL_NUM_GLYPHS_PASSED}/${TOTAL_ROUNDS * GLYPHS_PER_ROUND} total`;
+        gp.innerHTML = `Glyphs passed: ${CURR_NUM_GLYPHS_PASSED}/${NUM_ACTIVE_GLYPHS} current, ${TOTAL_NUM_GLYPHS_PASSED}/${TOTAL_NUM_ACTIVE_GLYPHS} total`;
     }
     let gf = document.getElementById("numGlyphFailed");
     if (gf) {
-        gf.innerHTML = `Glyphs failed: ${CURR_NUM_GLYPHS_FAILED}/${GLYPHS_PER_ROUND} current, ${TOTAL_NUM_GLYPHS_FAILED}/${TOTAL_ROUNDS * GLYPHS_PER_ROUND} total`;
+        gf.innerHTML = `Glyphs failed: ${CURR_NUM_GLYPHS_FAILED}/${NUM_ACTIVE_GLYPHS} current, ${TOTAL_NUM_GLYPHS_FAILED}/${TOTAL_NUM_ACTIVE_GLYPHS} total`;
     }
     let ot = document.getElementById("numOrbsTanked");
     if (ot) {
@@ -320,9 +319,9 @@ function showSettings() {
  * Create an alert describing what the game buttons do.
  */
 function showHelp() {
-    alert("Start: Begins the memory blast.\n\n" +
-        "Reset: Resets to the initial state.\n\n" +
-        "New Pattern: Begins a new game with a new pattern.");
+    alert("Start: Starts the memory blast.\n\n" +
+        "Restart: Restarts the same memory blast from the beginning.\n\n" +
+        "New Pattern: Starts the memory blast with a new pattern.");
 }
 /// ------------------------------------------------------------------------------------------------
 /// Render Helpers
@@ -490,6 +489,26 @@ function highlightTile(pos, stroke) {
 /// Game Helpers
 /// ------------------------------------------------------------------------------------------------
 /**
+ * Starts the memory blast.
+ */
+function start() {
+    if (PATTERN.length == 0) {
+        generate();
+    }
+    TICK_COUNT = 0;
+    TICK_TIMER = setInterval(tick, TICK_DURATION);
+}
+function restart() {
+    resetVars();
+    start();
+}
+/** Starts a new memory blast puzzle. */
+function newPattern() {
+    resetVars();
+    generate();
+    start();
+}
+/**
  * Generates a random order in which glyphs will turn active.
  *
  * Populates the two global arrays, PATTERN and SEQUENCE.
@@ -497,11 +516,6 @@ function highlightTile(pos, stroke) {
  * - SEQUENCE details exactly how each game tick is played out, given the ordering in PATTERN.
  */
 function generate() {
-    // Reset variables if necessary.
-    TICK_COUNT = -1;
-    if (TICK_TIMER) {
-        clearInterval(TICK_TIMER);
-    }
     PATTERN.length = 0;
     SEQUENCE.length = 0;
     let dtInput = document.getElementById("dt");
@@ -510,6 +524,7 @@ function generate() {
     DOUBLE_TROUBLE = dtInput.checked;
     FEELING_SPECIAL = fsInput.checked;
     NUM_ACTIVE_GLYPHS = Number(agInput.value);
+    TOTAL_NUM_ACTIVE_GLYPHS += NUM_ACTIVE_GLYPHS;
     // Start with some empty events to give the player time to adjust.
     SEQUENCE.push(EventType.Empty);
     SEQUENCE.push(EventType.Empty);
@@ -591,21 +606,11 @@ function generate() {
     SEQUENCE.push(EventType.End);
 }
 /**
- * Starts the memory blast.
- */
-function start() {
-    if (PATTERN.length == 0) {
-        generate();
-    }
-    TICK_COUNT = 0;
-    TICK_TIMER = setInterval(tick, TICK_DURATION);
-}
-/**
  * Resets the memory blast to its initial state, paused.
  */
-function reset() {
+function resetVars() {
     clearInterval(TICK_TIMER);
-    TICK_COUNT = -1;
+    TICK_COUNT = 0;
     ctx.putImageData(DEFAULT_ARENA_STATE_FULL, 0, 0);
     FIRE_QUADRANT.isActive = false;
     SHADOW_QUADRANT.isActive = false;
@@ -615,9 +620,16 @@ function reset() {
     CURR_NUM_GLYPHS_FAILED = 0;
     CURR_NUM_ORBS_TANKED = 0;
     CURR_NUM_ORBS_SPAWNED = 0;
+    TOTAL_NUM_ACTIVE_GLYPHS = 0;
+    TOTAL_NUM_GLYPHS_PASSED = 0;
+    TOTAL_NUM_GLYPHS_FAILED = 0;
+    TOTAL_NUM_ORBS_SPAWNED = 0;
+    TOTAL_NUM_ORBS_TANKED = 0;
     PLAYER.x = 10;
     PLAYER.y = 10;
-    highlightTile(PLAYER, PLAYER_TILE_STROKE);
+    TARGET.x = 10;
+    TARGET.y = 10;
+    MAGICAL_ORBS.clear();
 }
 /**
  * Advances the memory blast forward by one game tick.
