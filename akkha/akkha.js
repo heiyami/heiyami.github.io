@@ -7,6 +7,7 @@
  * As x increases, the position is further right. As y increases, the position is further down.
  */
 class Point {
+    /** Constructs a Point from x and y coordinates. */
     constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -26,6 +27,17 @@ class Point {
     /** Converts tile position to screen coordinates, mostly for rendering purposes. */
     toCoord(len) {
         return TILE_SIZE * len;
+    }
+    /** Converts to string for use in Map as key. */
+    toKey() {
+        return `Point(${this.x},${this.y})`;
+    }
+    /** Returns a Point from its key string representation. */
+    static fromKey(keyString) {
+        let i = keyString.indexOf(",");
+        let x = Number(keyString.slice(6, i));
+        let y = Number(keyString.slice(i + 1, -1));
+        return new Point(x, y);
     }
 }
 /**
@@ -87,9 +99,9 @@ class Quadrant {
     }
 }
 /**
- * Represents a shadow orb as part of Akkha's special attack, Trailing Orbs.
+ * Represents a magical orb as part of Akkha's special attack, Trailing Orbs.
  */
-class ShadowOrb {
+class MagicalOrb {
     constructor(pos, fill) {
         this.pos = pos;
         this.fill = fill;
@@ -105,21 +117,23 @@ var EventType;
     EventType[EventType["Empty"] = 0] = "Empty";
     /** Reset arena state to default. */
     EventType[EventType["Reset"] = 1] = "Reset";
+    /** Ends the game. */
+    EventType[EventType["End"] = 2] = "End";
     /** Glyphs active. */
-    EventType[EventType["FireGlyphActive"] = 2] = "FireGlyphActive";
-    EventType[EventType["ShadowGlyphActive"] = 3] = "ShadowGlyphActive";
-    EventType[EventType["IceGlyphActive"] = 4] = "IceGlyphActive";
-    EventType[EventType["LightningGlyphActive"] = 5] = "LightningGlyphActive";
+    EventType[EventType["FireGlyphActive"] = 3] = "FireGlyphActive";
+    EventType[EventType["ShadowGlyphActive"] = 4] = "ShadowGlyphActive";
+    EventType[EventType["IceGlyphActive"] = 5] = "IceGlyphActive";
+    EventType[EventType["LightningGlyphActive"] = 6] = "LightningGlyphActive";
     /** Quadrants active. */
     /** Subsequent stages describe the wave passing through the quadrant. */
-    EventType[EventType["FireQuadrantStage1"] = 6] = "FireQuadrantStage1";
-    EventType[EventType["FireQuadrantStage2"] = 7] = "FireQuadrantStage2";
-    EventType[EventType["ShadowQuadrantStage1"] = 8] = "ShadowQuadrantStage1";
-    EventType[EventType["ShadowQuadrantStage2"] = 9] = "ShadowQuadrantStage2";
-    EventType[EventType["IceQuadrantStage1"] = 10] = "IceQuadrantStage1";
-    EventType[EventType["IceQuadrantStage2"] = 11] = "IceQuadrantStage2";
-    EventType[EventType["LightningQuadrantStage1"] = 12] = "LightningQuadrantStage1";
-    EventType[EventType["LightningQuadrantStage2"] = 13] = "LightningQuadrantStage2";
+    EventType[EventType["FireQuadrantStage1"] = 7] = "FireQuadrantStage1";
+    EventType[EventType["FireQuadrantStage2"] = 8] = "FireQuadrantStage2";
+    EventType[EventType["ShadowQuadrantStage1"] = 9] = "ShadowQuadrantStage1";
+    EventType[EventType["ShadowQuadrantStage2"] = 10] = "ShadowQuadrantStage2";
+    EventType[EventType["IceQuadrantStage1"] = 11] = "IceQuadrantStage1";
+    EventType[EventType["IceQuadrantStage2"] = 12] = "IceQuadrantStage2";
+    EventType[EventType["LightningQuadrantStage1"] = 13] = "LightningQuadrantStage1";
+    EventType[EventType["LightningQuadrantStage2"] = 14] = "LightningQuadrantStage2";
 })(EventType || (EventType = {}));
 /**
  * Enumerates the elements in the memory blast.
@@ -151,6 +165,7 @@ const MEMORY_BLAST_EVENTS = new Set([
     EventType.IceQuadrantStage1,
     EventType.LightningQuadrantStage1
 ]);
+const GLYPHS_PER_ROUND = 4;
 const PLAYER_TILE_STROKE = "#00efef";
 const GRID_TILE_STROKE = "#eeeeee";
 const TARGET_TILE_STROKE = "#d35eed";
@@ -207,13 +222,16 @@ let SEQUENCE = [];
 let CURR_NUM_GLYPHS_PASSED = 0;
 let CURR_NUM_GLYPHS_FAILED = 0;
 let CURR_NUM_ORBS_TANKED = 0;
+let CURR_NUM_ORBS_SPAWNED = 0;
+let TOTAL_ROUNDS = 0;
 let TOTAL_NUM_GLYPHS_PASSED = 0;
 let TOTAL_NUM_GLYPHS_FAILED = 0;
 let TOTAL_NUM_ORBS_TANKED = 0;
+let TOTAL_NUM_ORBS_SPAWNED = 0;
 let PLAYER = new Point(10, 10);
 let TARGET = new Point(10, 10);
-let SHADOW_ORBS = new Map();
-let IS_SHADOW_ORB_DELETED = false;
+let MAGICAL_ORBS = new Map();
+let IS_MAGICAL_ORB_DELETED = false;
 /// ------------------------------------------------------------------------------------------------
 /// User Configuration
 /// ------------------------------------------------------------------------------------------------
@@ -268,15 +286,15 @@ function getTileClicked(event) {
 function printStats() {
     let gp = document.getElementById("numGlyphPassed");
     if (gp) {
-        gp.innerHTML = `Glyphs passed: ${CURR_NUM_GLYPHS_PASSED} / ${TOTAL_NUM_GLYPHS_PASSED}`;
+        gp.innerHTML = `Glyphs passed: ${CURR_NUM_GLYPHS_PASSED}/${GLYPHS_PER_ROUND} current, ${TOTAL_NUM_GLYPHS_PASSED}/${TOTAL_ROUNDS * GLYPHS_PER_ROUND} total`;
     }
     let gf = document.getElementById("numGlyphFailed");
     if (gf) {
-        gf.innerHTML = `Glyphs failed: ${CURR_NUM_GLYPHS_FAILED} / ${TOTAL_NUM_GLYPHS_FAILED}`;
+        gf.innerHTML = `Glyphs failed: ${CURR_NUM_GLYPHS_FAILED}/${GLYPHS_PER_ROUND} current, ${TOTAL_NUM_GLYPHS_FAILED}/${TOTAL_ROUNDS * GLYPHS_PER_ROUND} total`;
     }
     let ot = document.getElementById("numOrbsTanked");
     if (ot) {
-        ot.innerHTML = `Shadow orbs tanked: ${CURR_NUM_ORBS_TANKED} / ${TOTAL_NUM_ORBS_TANKED}`;
+        ot.innerHTML = `Magical orbs tanked: ${CURR_NUM_ORBS_TANKED}/${CURR_NUM_ORBS_SPAWNED} current, ${TOTAL_NUM_ORBS_TANKED}/${TOTAL_NUM_ORBS_SPAWNED} total`;
     }
 }
 /**
@@ -285,18 +303,26 @@ function printStats() {
 function showInstructions() {
     alert("When the puzzle begins, the four glyphs will activate in a randomly determined sequence.\n\n" +
         "Click to move the player, indicated by the blue square, to the correct quadrant of the arena to avoid taking damage.\n\n" +
-        "Your performance is tracked in the statistics below. They are displayed as: current / total.");
+        "Your performance is tracked in the statistics below.");
 }
 /**
  * Create an alert describing what each setting does.
  */
 function showSettings() {
-    alert("Double Trouble: When enabled, moving to a new location will spawn a shadow orb on your previous location." +
-        "Moving on top of a shadow orb will result in damage taken.\n\n" +
+    alert("Double Trouble: When enabled, moving to a new location will spawn a magical orb on your previous location. " +
+        "Moving on top of a magical orb will result in damage taken.\n\n" +
         "Feeling Special: When enabled, increases the speed of the memory blast. " +
-        "If Double Trouble is also enabled, an additional shadow orb will spawn one tile ahead of your character.\n\n" +
+        "If Double Trouble is also enabled, an additional magical orb will spawn one tile ahead of your character.\n\n" +
         "Active Glyphs: Choose how many glyphs will activate in the sequence (4-6). " +
         "In game, this scales based on Akkha's path level. At level 2, it is set to 5. At level 4, it is set to 6.");
+}
+/**
+ * Create an alert describing what the game buttons do.
+ */
+function showHelp() {
+    alert("Start: Begins the memory blast.\n\n" +
+        "Reset: Resets to the initial state.\n\n" +
+        "New Pattern: Begins a new game with a new pattern.");
 }
 /// ------------------------------------------------------------------------------------------------
 /// Render Helpers
@@ -330,12 +356,14 @@ function renderTick() {
     drawGlyph(SHADOW_GLYPH);
     drawGlyph(ICE_GLYPH);
     drawGlyph(LIGHTNING_GLYPH);
-    // TODO: Deletion of shadow orbs doesn't render properly.
+    // TODO: Deletion of magical orbs doesn't render properly.
     // Need to redraw the arena state...
-    for (const [pos, orb] of SHADOW_ORBS) {
+    for (const [pos, orb] of MAGICAL_ORBS) {
         if (orb) {
             // Have to adjust by half a tile to center the orb properly.
-            let newPos = new Point(pos.x + 0.5, pos.y + 0.5);
+            let newPos = Point.fromKey(pos);
+            newPos.x += 0.5;
+            newPos.y += 0.5;
             drawCircle(newPos, 0.45, orb.fill);
         }
     }
@@ -485,7 +513,6 @@ function generate() {
     // Start with some empty events to give the player time to adjust.
     SEQUENCE.push(EventType.Empty);
     SEQUENCE.push(EventType.Empty);
-    // Cache the previously generated glyph so that it may not be chosen consecutively.
     let glyphEvent;
     let prevEvent = EventType.Empty;
     for (let i = 1; i <= NUM_ACTIVE_GLYPHS; i++) {
@@ -560,8 +587,8 @@ function generate() {
                 break;
         }
     }
-    // Reset the canvas.
-    SEQUENCE.push(EventType.Reset);
+    // Ends the game.
+    SEQUENCE.push(EventType.End);
 }
 /**
  * Starts the memory blast.
@@ -584,7 +611,12 @@ function reset() {
     SHADOW_QUADRANT.isActive = false;
     ICE_QUADRANT.isActive = false;
     LIGHTNING_QUADRANT.isActive = false;
-    SHADOW_ORBS.clear();
+    CURR_NUM_GLYPHS_PASSED = 0;
+    CURR_NUM_GLYPHS_FAILED = 0;
+    CURR_NUM_ORBS_TANKED = 0;
+    CURR_NUM_ORBS_SPAWNED = 0;
+    PLAYER.x = 10;
+    PLAYER.y = 10;
     highlightTile(PLAYER, PLAYER_TILE_STROKE);
 }
 /**
@@ -597,9 +629,9 @@ function tick() {
         printStats();
     }
     // Reset graphic to default state.
-    if (IS_SHADOW_ORB_DELETED) {
+    if (IS_MAGICAL_ORB_DELETED) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        IS_SHADOW_ORB_DELETED = false;
+        IS_MAGICAL_ORB_DELETED = false;
     }
     ctx.putImageData(DEFAULT_ARENA_STATE_FULL, 0, 0);
     // Render target tile highlight before updating positions.
@@ -609,11 +641,11 @@ function tick() {
     advanceMemoryBlast();
     // Check for damage.
     if (DOUBLE_TROUBLE) {
-        deleteShadowOrbs();
-        if (isDamagedByShadowOrb()) {
+        if (isDamagedByMagicalOrb()) {
             CURR_NUM_ORBS_TANKED += 1;
             TOTAL_NUM_ORBS_TANKED += 1;
         }
+        deleteMagicalOrbs();
     }
     if (isDamagedByMemoryBlast()) {
         CURR_NUM_GLYPHS_FAILED += 1;
@@ -725,18 +757,29 @@ function advanceMemoryBlast() {
             ICE_QUADRANT.isActive = false;
             LIGHTNING_QUADRANT.isActive = false;
             break;
+        case EventType.End:
+            FIRE_GLYPH.isActive = false;
+            SHADOW_GLYPH.isActive = false;
+            ICE_GLYPH.isActive = false;
+            LIGHTNING_GLYPH.isActive = false;
+            FIRE_QUADRANT.isActive = false;
+            SHADOW_QUADRANT.isActive = false;
+            ICE_QUADRANT.isActive = false;
+            LIGHTNING_QUADRANT.isActive = false;
+            MAGICAL_ORBS.clear();
+            break;
         case EventType.Empty:
         default:
             break;
     }
 }
 /**
- * Determines whether the player receives damage from a shadow orb.
+ * Determines whether the player receives damage from a magical orb.
  *
- * @returns true if there is at least one shadow orb on the same tile as the player, else false.
+ * @returns true if there is at least one magical orb on the same tile as the player, else false.
  */
-function isDamagedByShadowOrb() {
-    return SHADOW_ORBS.get(PLAYER) === null;
+function isDamagedByMagicalOrb() {
+    return MAGICAL_ORBS.has(PLAYER.toKey());
 }
 /**
  * Determines whether the player has passed a single glyph's memory blast.
@@ -771,25 +814,27 @@ function updatePositions() {
     PLAYER.x += deltaX;
     PLAYER.y += deltaY;
     if (DOUBLE_TROUBLE) {
-        spawnShadowOrbs(initX, initY, deltaX, deltaY);
+        spawnMagicalOrbs(initX, initY, deltaX, deltaY);
     }
 }
 /**
- * Spawns shadow orbs based on the player's destination tile. Orbs last for 6 ticks.
+ * Spawns magical orbs based on the player's destination tile. Orbs last for 6 ticks.
  *
  * @param initX               The initial x-coordinate of the player's position.
  * @param initY               The initial y-coordinate of the player's position.
  * @param deltaX              The distance that the player travels in the x direction.
  * @param deltaY              The distance that the player travels in the y direction.
  */
-function spawnShadowOrbs(initX, initY, deltaX, deltaY) {
+function spawnMagicalOrbs(initX, initY, deltaX, deltaY) {
     let pos;
     let quad;
-    // Only spawn the basic shadow orb when the player has moved.
+    // Only spawn the basic magical orb when the player has moved.
     if (deltaX != 0 || deltaY != 0) {
         pos = new Point(initX, initY);
         quad = Quadrant.getQuadrant(pos);
-        SHADOW_ORBS.set(pos, new ShadowOrb(pos, quad.orbFill));
+        MAGICAL_ORBS.set(pos.toKey(), new MagicalOrb(pos, quad.orbFill));
+        CURR_NUM_ORBS_SPAWNED += 1;
+        TOTAL_NUM_ORBS_SPAWNED += 1;
         // When Feeling Special is enabled, spawns an additional orb in front of the player.
         // * Diagonal movement: Increment both x and y to place one tile ahead.
         // * Straight movement: Increment the non-zero dimension.
@@ -800,37 +845,39 @@ function spawnShadowOrbs(initX, initY, deltaX, deltaY) {
             deltaY += (Math.abs(deltaY) == 2) ? ((deltaY > 0) ? -1 : 1) : 0;
             pos = new Point(PLAYER.x + deltaX, PLAYER.y + deltaY);
             quad = Quadrant.getQuadrant(pos);
-            SHADOW_ORBS.set(pos, new ShadowOrb(pos, quad.orbFill));
+            MAGICAL_ORBS.set(pos.toKey(), new MagicalOrb(pos, quad.orbFill));
+            CURR_NUM_ORBS_SPAWNED += 1;
+            TOTAL_NUM_ORBS_SPAWNED += 1;
         }
     }
 }
 /**
- * Deletes shadow orbs that should be cleaned up.
+ * Deletes magical orbs that should be cleaned up.
  */
-function deleteShadowOrbs() {
-    // If the player occupies the same tile as a shadow orb, the player takes
+function deleteMagicalOrbs() {
+    // If the player occupies the same tile as a magical orb, the player takes
     // damage and the orb should be deleted.
-    if (SHADOW_ORBS.has(PLAYER)) {
-        SHADOW_ORBS.delete(PLAYER);
-        IS_SHADOW_ORB_DELETED = true;
+    if (MAGICAL_ORBS.has(PLAYER.toKey())) {
+        MAGICAL_ORBS.delete(PLAYER.toKey());
+        IS_MAGICAL_ORB_DELETED = true;
     }
-    // Shadow orbs should expire after being active for 6 ticks.
+    // Magical orbs should expire after being active for 6 ticks.
     let toDelete = [];
-    for (const [pos, orb] of SHADOW_ORBS) {
+    for (const [pos, orb] of MAGICAL_ORBS) {
         if (orb && orb.spawnTick == TICK_COUNT - 6) {
             toDelete.push(pos);
         }
     }
     for (const pos of toDelete) {
-        SHADOW_ORBS.delete(pos);
+        MAGICAL_ORBS.delete(pos);
     }
-    IS_SHADOW_ORB_DELETED = IS_SHADOW_ORB_DELETED || toDelete.length > 0;
+    IS_MAGICAL_ORB_DELETED = IS_MAGICAL_ORB_DELETED || toDelete.length > 0;
 }
 /// ------------------------------------------------------------------------------------------------
 /// Util
 /// ------------------------------------------------------------------------------------------------
 /**
- * Returns a randomly chosen EventType of a glyph activating, excluding the EventType.
+ * Returns a randomly chosen EventType of a glyph activating, given the previous EventType.
  *
  * @param excl                A single EventType to exclude from the random range.
  * @returns the random EventType.
@@ -838,10 +885,23 @@ function deleteShadowOrbs() {
 function randGlyphEvent(excl) {
     // Build a deep copy of GLYPH_EVENTS so we don't modify it.
     let validGlyphs = JSON.parse(JSON.stringify(GLYPH_EVENTS));
-    // Remove excl.
-    let i = validGlyphs.indexOf(excl);
-    if (i >= 0) {
-        validGlyphs.splice(i, 1);
+    // Consecutive glyphs may not repeat and must be adjacent to each other on the arena.
+    let i;
+    switch (excl) {
+        case EventType.FireGlyphActive:
+        case EventType.LightningGlyphActive:
+            i = validGlyphs.indexOf(EventType.FireGlyphActive);
+            validGlyphs.splice(i, 1);
+            i = validGlyphs.indexOf(EventType.LightningGlyphActive);
+            validGlyphs.splice(i, 1);
+            break;
+        case EventType.ShadowGlyphActive:
+        case EventType.IceGlyphActive:
+            i = validGlyphs.indexOf(EventType.IceGlyphActive);
+            validGlyphs.splice(i, 1);
+            i = validGlyphs.indexOf(EventType.ShadowGlyphActive);
+            validGlyphs.splice(i, 1);
+            break;
     }
     let j = Math.floor(Math.random() * validGlyphs.length);
     return validGlyphs[j];

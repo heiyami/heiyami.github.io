@@ -8,7 +8,7 @@
 <body>
 <!-- <body onresize="resize()"> -->
     <p align="center">
-        <button onclick="showInstructions()">Instructions</button>
+        <button onclick="showInstructions()">How To Play</button>
         <button onclick="showSettings()">About Settings</button>
     </p>
     <div class="center-wrapper-parent">
@@ -27,9 +27,9 @@
             </div>
         </div>
         <div id="stats">
-            <div id="numGlyphPassed" align="center">Glyphs passed: 0 / 0</div>
-            <div id="numGlyphFailed" align="center">Glyphs failed: 0 / 0</div>
-            <div id="numOrbsTanked" align="center">Shadow orbs tanked: 0 / 0</div>
+            <div id="numGlyphPassed" align="center">Glyphs passed: 0/0 current, 0/0 total</div>
+            <div id="numGlyphFailed" align="center">Glyphs failed: 0/0 current, 0/0 total</div>
+            <div id="numOrbsTanked" align="center">Magical orbs tanked: 0/0 current, 0/0 total</div>
         </div>
         <div class="canvas-wrapper">
             <canvas id="akkha-arena" tabindex="1"></canvas>
@@ -38,6 +38,7 @@
 			<button onclick="start()">Start</button>
 			<button onclick="reset()">Reset</button>
 			<button onclick="generate()">New Pattern</button>
+            <button onclick="showHelp()">Help</button>
 		</p>
     </div>
     <script type="text/javascript" src="akkha.js"></script>
