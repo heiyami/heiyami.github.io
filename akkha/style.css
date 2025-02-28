@@ -1,0 +1,44 @@
+body {
+    background-color: #2b2b2b;
+    color: #a2a2a2;
+    font-size: 14;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+button {
+    background-color: #6a6a6a;
+    color: #fefefe;
+    border: 0;
+    border-radius: 2px;
+    font-size: 13;
+    padding: 8px;
+    margin: 2px;
+}
+
+.canvas-wrapper-parent {
+    transform-style: preserve-3d;
+}
+
+#options {
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    width: 25%;
+    padding-bottom: 1em;
+}
+
+#form {
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    width: auto;
+}
+
+#stats {
+    padding-bottom: 1em;
+}
+
+#akkha-arena {
+    display: block;
+    margin: 0 auto;
+}
